@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Data cermat-cloud</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
         body {
@@ -21,12 +22,12 @@
         label {
             margin-left: 20px;
         }
-        select {
+        select, button {
             padding: 8px;
-            margin-bottom: 10px;
-            margin-left: 10px;
+            margin: 10px;
             border-radius: 5px;
             border: 1px solid #ddd;
+            cursor: pointer;
         }
         table {
             width: 100%;
@@ -73,7 +74,7 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        .home-button {
+        .home-button, .download-excel {
             display: block;
             width: fit-content;
             margin: 20px auto;
@@ -86,7 +87,7 @@
             text-align: center;
             transition: background-color 0.3s ease;
         }
-        .home-button:hover {
+        .home-button:hover, .download-excel:hover {
             background-color: #0056b3;
         }
     </style>
@@ -101,7 +102,7 @@
     <select id="filterSKPD">
         <option value="">Semua</option>
     </select>
-    <br><br>
+    <button id="download-excel" class="download-excel">Download Excel</button>
     <table>
         <thead id="tableHeader"></thead>
         <tbody id="dataBody"></tbody>
@@ -121,11 +122,9 @@
                             const data = result.data;
                             const header = Object.keys(data[0]);
 
-                            // Ambil SKPD unik
                             const skpdSet = new Set();
                             data.forEach(row => skpdSet.add(row["SKPD"]));
 
-                            // Tambahkan opsi ke dropdown filter
                             const filterSelect = document.getElementById("filterSKPD");
                             skpdSet.forEach(skpd => {
                                 const option = document.createElement("option");
@@ -134,7 +133,6 @@
                                 filterSelect.appendChild(option);
                             });
 
-                            // Buat header tabel
                             const thead = document.getElementById("tableHeader");
                             const trHead = document.createElement("tr");
                             header.forEach(col => {
@@ -144,33 +142,36 @@
                             });
                             thead.appendChild(trHead);
 
-                            // Fungsi menampilkan data
                             function renderTable(filterValue) {
                                 const tbody = document.getElementById("dataBody");
                                 tbody.innerHTML = "";
-                                data.forEach(row => {
-                                    if (filterValue === "" || row["SKPD"] === filterValue) {
-                                        let tr = document.createElement("tr");
-                                        header.forEach(col => {
-                                            let td = document.createElement("td");
-                                            td.textContent = row[col];
-                                            tr.appendChild(td);
-                                        });
-                                        tbody.appendChild(tr);
-                                    }
+                                return data.filter(row => filterValue === "" || row["SKPD"] === filterValue).map(row => {
+                                    let tr = document.createElement("tr");
+                                    header.forEach(col => {
+                                        let td = document.createElement("td");
+                                        td.textContent = row[col];
+                                        tr.appendChild(td);
+                                    });
+                                    tbody.appendChild(tr);
+                                    return row;
                                 });
                             }
 
-                            // Event filter
                             filterSelect.addEventListener("change", function () {
                                 renderTable(this.value);
                             });
 
-                            // Tampilkan semua data awalnya
                             renderTable("");
-
-                            // Sembunyikan loading
                             document.getElementById("loading").style.display = "none";
+
+                            document.getElementById("download-excel").addEventListener("click", function () {
+                                let filteredData = renderTable(filterSelect.value);
+                                if (filteredData.length === 0) return alert("Tidak ada data untuk diunduh.");
+                                let ws = XLSX.utils.json_to_sheet(filteredData);
+                                let wb = XLSX.utils.book_new();
+                                XLSX.utils.book_append_sheet(wb, ws, "Data");
+                                XLSX.writeFile(wb, "Filtered_Data.xlsx");
+                            });
                         }
                     });
                 })
