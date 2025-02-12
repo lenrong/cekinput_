@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Filter Data SKPD</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        h2 {
+            text-align: center;
+            margin-top: 20px;
+        }
+        label {
+            margin-left: 20px;
+        }
+        select {
+            padding: 5px;
+            margin-bottom: 10px;
+            margin-left: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background-color: white;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+            white-space: nowrap;
+        }
+        th {
+            background-color: #007BFF;
+            color: white;
+            position: sticky;
+            top: 0;
+        }
+        tbody tr:hover {
+            background-color: #f1f1f1;
+            transition: background-color 0.3s ease;
+        }
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-size: 1.5em;
+            color: #007BFF;
+        }
+        .smooth-scroll {
+            scroll-behavior: smooth;
+        }
+    </style>
+</head>
+<body>
+    <div class="loading" id="loading">Memuat Data...</div>
+    <h2>Data Keuangan (Filter SKPD)</h2>
+    <label for="filterSKPD">Pilih SKPD:</label>
+    <select id="filterSKPD">
+        <option value="">Semua</option>
+    </select>
+    <br><br>
+    <div class="smooth-scroll">
+        <table>
+            <thead id="tableHeader"></thead>
+            <tbody id="dataBody"></tbody>
+        </table>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQnybc1gMdp6PBJpa-FnjeR7_wJDGOj3QIxTnkXbreT0OxDsXhMK_AnifZrVDEanVqIfoHfAV2DnGyk/pub?gid=58869595&single=true&output=csv";
+
+            fetch(sheetURL)
+                .then(response => response.text())
+                .then(csvData => {
+                    Papa.parse(csvData, {
+                        header: true,
+                        skipEmptyLines: true,
+                        complete: function (result) {
+                            const data = result.data;
+                            const header = Object.keys(data[0]);
+
+                            // Ambil SKPD unik
+                            const skpdSet = new Set();
+                            data.forEach(row => skpdSet.add(row["SKPD"]));
+
+                            // Tambahkan opsi ke dropdown filter
+                            const filterSelect = document.getElementById("filterSKPD");
+                            skpdSet.forEach(skpd => {
+                                const option = document.createElement("option");
+                                option.value = skpd;
+                                option.textContent = skpd;
+                                filterSelect.appendChild(option);
+                            });
+
+                            // Buat header tabel
+                            const thead = document.getElementById("tableHeader");
+                            const trHead = document.createElement("tr");
+                            header.forEach(col => {
+                                let th = document.createElement("th");
+                                th.textContent = col;
+                                trHead.appendChild(th);
+                            });
+                            thead.appendChild(trHead);
+
+                            // Fungsi menampilkan data
+                            function renderTable(filterValue) {
+                                const tbody = document.getElementById("dataBody");
+                                tbody.innerHTML = "";
+                                data.forEach(row => {
+                                    if (filterValue === "" || row["SKPD"] === filterValue) {
+                                        let tr = document.createElement("tr");
+                                        header.forEach(col => {
+                                            let td = document.createElement("td");
+                                            td.textContent = row[col];
+                                            tr.appendChild(td);
+                                        });
+                                        tbody.appendChild(tr);
+                                    }
+                                });
+                            }
+
+                            // Event filter
+                            filterSelect.addEventListener("change", function () {
+                                renderTable(this.value);
+                            });
+
+                            // Tampilkan semua data awalnya
+                            renderTable("");
+
+                            // Sembunyikan loading
+                            document.getElementById("loading").style.display = "none";
+                        }
+                    });
+                })
+                .catch(error => {
+                    console.error("Error fetching data:", error);
+                    document.getElementById("loading").textContent = "Gagal memuat data. Silakan coba lagi.";
+                });
+        });
+    </script>
+</body>
+</html>
